@@ -112,6 +112,46 @@ function App() {
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
   };
 
+  const handlePayFast = () => {
+    if (!customerDetails.name || !customerDetails.phone || !customerDetails.address) {
+      alert("Please fill in all delivery details before paying online.");
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    // Using PayFast Sandbox URL for testing. For production, use https://www.payfast.co.za/eng/process
+    form.action = 'https://sandbox.payfast.co.za/eng/process';
+    
+    const fields = {
+      merchant_id: '10000100', // Sandbox Merchant ID
+      merchant_key: '46f0cd694581a', // Sandbox Merchant Key
+      return_url: window.location.href,
+      cancel_url: window.location.href,
+      name_first: customerDetails.name,
+      // For simplicity in this demo, we use a placeholder email. You would ideally collect this.
+      email_address: 'customer@example.com', 
+      cell_number: customerDetails.phone,
+      m_payment_id: Date.now().toString(),
+      amount: cartTotal.toFixed(2),
+      item_name: `Patels Xclusive Order (${cart.length} items)`
+    };
+
+    for (const key in fields) {
+      if (fields.hasOwnProperty(key)) {
+        const hiddenField = document.createElement('input');
+        hiddenField.type = 'hidden';
+        hiddenField.name = key;
+        hiddenField.value = fields[key];
+        form.appendChild(hiddenField);
+      }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  };
+
+
 
 
   return (
@@ -284,9 +324,18 @@ function App() {
               <button type="button" onClick={() => setIsCheckout(false)} style={{ background: 'transparent', color: '#fff', border: '1px solid #fff', padding: '0.8rem', borderRadius: '8px', cursor: 'pointer' }}>
                 Back to Cart
               </button>
-              <button type="submit" className="btn-whatsapp">
-                Send Full Order via WhatsApp
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <button type="submit" className="btn-whatsapp" style={{ flex: 1 }}>
+                  Order via WhatsApp
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handlePayFast} 
+                  style={{ flex: 1, background: '#e3000f', color: '#fff', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }}
+                >
+                  Pay Online (PayFast)
+                </button>
+              </div>
             </form>
           ) : (
             cart.map((item, index) => (
