@@ -134,16 +134,39 @@ function App() {
       currency: 'ZAR',
       name: 'Patels Xclusive',
       description: `Order (${cart.length} items)`,
-      callback: function (result) {
-        // This function returns a token that you must pass to your backend
-        // to complete the charge. Since there is no backend yet, we alert the token.
+      callback: async function (result) {
         if (result.error) {
           alert("Payment error: " + result.error.message);
         } else {
           console.log("Yoco Token: ", result.id);
-          alert("Payment token generated successfully! Token: " + result.id + "\n\nNote: A backend server is required to finalize this charge. Funds have not been deducted yet.");
-          // Ideally, here you would:
-          // fetch('/api/charge', { method: 'POST', body: JSON.stringify({ token: result.id }) })
+          
+          try {
+            // Send the token to the backend server to finalize the charge
+            const response = await fetch('http://localhost:3001/api/charge', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                token: result.id,
+                amountInCents: Math.round(cartTotal * 100)
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              alert("Payment successful! Your order has been placed.");
+              setCart([]);
+              setIsCheckout(false);
+              setIsCartOpen(false);
+            } else {
+              alert("Payment failed: " + data.error);
+            }
+          } catch (error) {
+            console.error("Error finalizing payment:", error);
+            alert("An error occurred while connecting to the backend server.");
+          }
         }
       }
     });
