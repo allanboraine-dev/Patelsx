@@ -112,43 +112,41 @@ function App() {
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
   };
 
-  const handlePayFast = () => {
+  const handleYocoPayment = () => {
     if (!customerDetails.name || !customerDetails.phone || !customerDetails.address) {
       alert("Please fill in all delivery details before paying online.");
       return;
     }
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    // Using PayFast Sandbox URL for testing. For production, use https://www.payfast.co.za/eng/process
-    form.action = 'https://sandbox.payfast.co.za/eng/process';
-    
-    const fields = {
-      merchant_id: '10000100', // Sandbox Merchant ID
-      merchant_key: '46f0cd694581a', // Sandbox Merchant Key
-      return_url: window.location.href,
-      cancel_url: window.location.href,
-      name_first: customerDetails.name,
-      // For simplicity in this demo, we use a placeholder email. You would ideally collect this.
-      email_address: 'customer@example.com', 
-      cell_number: customerDetails.phone,
-      m_payment_id: Date.now().toString(),
-      amount: cartTotal.toFixed(2),
-      item_name: `Patels Xclusive Order (${cart.length} items)`
-    };
-
-    for (const key in fields) {
-      if (fields.hasOwnProperty(key)) {
-        const hiddenField = document.createElement('input');
-        hiddenField.type = 'hidden';
-        hiddenField.name = key;
-        hiddenField.value = fields[key];
-        form.appendChild(hiddenField);
-      }
+    if (typeof window.YocoSDK === 'undefined') {
+      alert("Yoco SDK failed to load. Please try again later.");
+      return;
     }
 
-    document.body.appendChild(form);
-    form.submit();
+    // Initialize Yoco Production SDK
+    // Replace pk_live_... with your actual Yoco live public key
+    const yoco = new window.YocoSDK({
+      publicKey: 'pk_live_YOUR_PUBLIC_KEY_HERE' 
+    });
+
+    yoco.showPopup({
+      amountInCents: Math.round(cartTotal * 100),
+      currency: 'ZAR',
+      name: 'Patels Xclusive',
+      description: `Order (${cart.length} items)`,
+      callback: function (result) {
+        // This function returns a token that you must pass to your backend
+        // to complete the charge. Since there is no backend yet, we alert the token.
+        if (result.error) {
+          alert("Payment error: " + result.error.message);
+        } else {
+          console.log("Yoco Token: ", result.id);
+          alert("Payment token generated successfully! Token: " + result.id + "\n\nNote: A backend server is required to finalize this charge. Funds have not been deducted yet.");
+          // Ideally, here you would:
+          // fetch('/api/charge', { method: 'POST', body: JSON.stringify({ token: result.id }) })
+        }
+      }
+    });
   };
 
 
@@ -330,10 +328,10 @@ function App() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={handlePayFast} 
-                  style={{ flex: 1, background: '#e3000f', color: '#fff', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }}
+                  onClick={handleYocoPayment} 
+                  style={{ flex: 1, background: '#1c1c1c', color: '#fff', border: '1px solid #333', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }}
                 >
-                  Pay Online (PayFast)
+                  Pay with Yoco
                 </button>
               </div>
             </form>
