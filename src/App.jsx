@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import './index.css'
 
 const PRODUCTS = [
@@ -19,6 +20,8 @@ function App() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiResult, setAiResult] = useState(null);
+  const [aiTextResult, setAiTextResult] = useState('');
+  const [aiEstimatedPrice, setAiEstimatedPrice] = useState(0);
   const [currentHeroImg, setCurrentHeroImg] = useState(0);
 
   const heroImages = [
@@ -42,11 +45,39 @@ function App() {
     addToCart({ 
       id: Date.now(), 
       name: `Custom Design: ${aiPrompt}`, 
-      price: 0, 
+      price: aiEstimatedPrice, 
       img: aiResult, 
       isQuote: true 
     });
     setIsCartOpen(true);
+  };
+
+  const handleAiGenerate = () => {
+    if (!aiPrompt) return;
+    setIsGenerating(true);
+    setAiResult(null);
+    setAiTextResult('');
+    setAiEstimatedPrice(0);
+    
+    // Generate a dynamic image based on the user's prompt using a free image generation endpoint
+    // Put the user's prompt FIRST so the AI prioritizes it heavily, and add a random seed to prevent cached/bogus images
+    const imagePrompt = `${aiPrompt}, high quality fashion photography, photorealistic, detailed`;
+    const randomSeed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=600&height=800&nologo=true&seed=${randomSeed}`;
+    
+    // Set the image immediately so it starts loading!
+    setAiResult(imageUrl);
+    
+    // Simulate AI text and price generation
+    setTimeout(() => {
+      setAiTextResult(`An exquisite custom ${aiPrompt.toLowerCase()} designed with premium, high-quality fabrics. This bespoke piece offers a flawless, elegant fit tailored exactly to your unique style, perfect for making a luxurious statement.`);
+      
+      // Random price between 1500 and 15000 rounded to nearest 100
+      const randomPrice = Math.floor(Math.random() * (150 - 15 + 1) + 15) * 100;
+      setAiEstimatedPrice(randomPrice);
+      
+      setIsGenerating(false);
+    }, 2000);
   };
 
   const removeFromCart = (index) => {
@@ -72,33 +103,16 @@ function App() {
     message += `Address: ${customerDetails.address}\n\n`;
     message += `*ORDER ITEMS:*\n`;
     cart.forEach((item, index) => {
-      const priceText = item.isQuote ? 'Quote Requested' : `R${item.price}`;
+      const priceText = item.isQuote ? (item.price ? `Est. R${item.price}` : 'Quote Requested') : `R${item.price}`;
       message += `${index + 1}. ${item.name} - ${priceText}\n`;
     });
-    message += `\n*Total: R${cartTotal}${hasQuoteItems ? ' (plus items pending quote)' : ''}*\n\nPlease confirm my order!`;
+    message += `\n*Total: R${cartTotal}${hasQuoteItems ? ' (plus items pending final quote)' : ''}*\n\nPlease confirm my order!`;
     
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
   };
 
-  const handleAiGenerate = () => {
-    if (!aiPrompt) return;
-    setIsGenerating(true);
-    setAiResult(null);
-    
-    // Simulate generation delay
-    setTimeout(() => {
-      setIsGenerating(false);
-      // Since it's a demo, we randomly show one of the premium assets, or if they type 'suit', show suit etc.
-      let mockImage = '/high_end_gown_1781710641617.png';
-      if (aiPrompt.toLowerCase().includes('suit')) {
-        mockImage = '/bespoke_suit_1781710658339.png';
-      } else if (aiPrompt.toLowerCase().includes('shoe') || aiPrompt.toLowerCase().includes('heels')) {
-        mockImage = '/premium_shoes_1781710672790.png';
-      }
-      setAiResult(mockImage);
-    }, 2500);
-  };
+
 
   return (
     <>
@@ -181,14 +195,22 @@ function App() {
 
             {aiResult && (
               <div className="ai-result">
-                <h3 style={{ marginBottom: '1rem' }}>Your Unique Design:</h3>
+                <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>Your Unique Design</h3>
+                {aiTextResult && (
+                  <p style={{ fontStyle: 'italic', marginBottom: '1rem', lineHeight: '1.6' }}>"{aiTextResult}"</p>
+                )}
+                {aiEstimatedPrice > 0 && (
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '1.5rem' }}>
+                    Estimated Price: R{aiEstimatedPrice}
+                  </div>
+                )}
                 <img src={aiResult} alt="Generated AI Design" />
                 <button 
                   className="btn-add" 
                   style={{ marginTop: '1rem', width: '100%' }}
                   onClick={handleRequestQuote}
                 >
-                  Request Quote for this Design
+                  Request Final Quote & Pre-order
                 </button>
               </div>
             )}
@@ -271,7 +293,7 @@ function App() {
               <div key={index} className="cart-item">
                 <div>
                   <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                  <div style={{ color: 'var(--primary)' }}>{item.isQuote ? 'Price on Request' : `R${item.price}`}</div>
+                  <div style={{ color: 'var(--primary)' }}>{item.isQuote ? (item.price ? `Est. R${item.price}` : 'Price on Request') : `R${item.price}`}</div>
                 </div>
                 <button 
                   style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer' }}
